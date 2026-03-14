@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmer Crop Rotation & Water Smart Advisor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#16a34a', accent: '#22c55e', appbg: '#f1f5f9',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 20px rgba(0, 0, 0, 0.04)',
+                        'card': '0 10px 25px rgba(22, 163, 74, 0.05)',
+                        'dropdown': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        select.custom-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-appbg text-slate-800 min-h-screen flex flex-col items-center py-6 px-4 sm:px-6 relative">
+
+    <div class="absolute top-4 right-4 sm:top-6 sm:right-6 z-30">
+        <select id="languageSwitch" onchange="changeLanguage()" class="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 shadow-sm outline-none cursor-pointer">
+            <option value="en">English</option>
+            <option value="hi">हिंदी (Hindi)</option>
+            <option value="mr">मराठी (Marathi)</option>
+        </select>
+    </div>
+    <div class="text-center max-w-2xl mx-auto mt-10 mb-8 px-4">
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 text-primary rounded-full mb-4 shadow-sm text-3xl">🌱</div>
+        <h1 id="pageTitle" class="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight mb-3">Farmer Crop Rotation & Water Smart Advisor</h1>
+        <p id="pageSubtitle" class="text-lg text-slate-500">Get crop recommendations based on rotation, region, and water availability.</p>
+        <p id="advisoryDate" class="text-md font-semibold text-primary mt-3 bg-green-50 inline-block px-4 py-1.5 rounded-full border border-green-200"></p>
+    </div>
+
+    <div class="w-full max-w-3xl space-y-6">
+        
+        <div class="bg-white rounded-2xl shadow-card p-6 sm:p-10 border border-slate-100 relative overflow-visible z-20">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-accent rounded-t-2xl"></div>
+            <div class="space-y-6">
+                
+                <div class="relative z-30">
+                    <label id="lblCrop" class="block text-sm font-semibold text-slate-700 mb-2">Step 1: Previous Crop Grown</label>
+                    <div class="relative w-full shadow-sm rounded-xl bg-slate-50 border border-slate-200 focus-within:border-primary focus-within:ring-1 transition-all">
+                        <input type="text" id="cropSearchInput" class="block w-full p-4 text-base text-slate-900 bg-transparent outline-none rounded-xl" placeholder="Search crops (e.g., Soybean, Rice)..." autocomplete="off">
+                    </div>
+                    <input type="hidden" id="selectedCropId" value="">
+                    <ul id="cropSuggestions" class="absolute left-0 right-0 mt-1 bg-white border border-slate-100 rounded-xl shadow-dropdown hidden max-h-56 overflow-y-auto no-scrollbar"></ul>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 relative z-20">
+                    <div>
+                        <label id="lblState" class="block text-sm font-semibold text-slate-700 mb-2">State</label>
+                        <select disabled class="w-full bg-slate-100 border border-slate-200 text-slate-600 rounded-xl px-4 py-3.5 outline-none shadow-sm cursor-not-allowed custom-select text-base opacity-80">
+                            <option>Maharashtra</option>
+                        </select>
+                    </div>
+                    <div class="relative">
+                        <label id="lblDistrict" class="block text-sm font-semibold text-slate-700 mb-2">Step 2: Select District</label>
+                        <div class="relative w-full shadow-sm rounded-xl bg-slate-50 border border-slate-200 focus-within:border-primary focus-within:ring-1 transition-all">
+                            <input type="text" id="districtSearchInput" class="block w-full p-3.5 text-base text-slate-900 bg-transparent outline-none rounded-xl" placeholder="Search district..." autocomplete="off">
+                        </div>
+                        <input type="hidden" id="selectedDistrictId" value="">
+                        <input type="hidden" id="selectedRegionId" value="">
+                        <ul id="districtSuggestions" class="absolute left-0 right-0 mt-1 bg-white border border-slate-100 rounded-xl shadow-dropdown hidden max-h-60 overflow-y-auto no-scrollbar"></ul>
+                    </div>
+                </div>
+
+                <div id="seasonalAlert" class="rounded-xl p-5 border shadow-sm transition-all duration-300 block bg-slate-50 border-slate-200">
+                    <div class="flex gap-3">
+                        <span id="alertIcon" class="text-2xl mt-1">🌱</span>
+                        <div>
+                            <h4 id="alertTitle" class="font-bold text-lg mb-1">Current Farming Phase</h4>
+                            <p id="alertDesc" class="text-sm font-medium leading-relaxed text-slate-600">Please select a district to view seasonal advice.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 relative z-10">
+                    <div>
+                        <label id="lblWater" for="waterLevel" class="block text-sm font-semibold text-slate-700 mb-2">Step 3: Water Availability</label>
+                        <select id="waterLevel" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-accent transition-all shadow-sm cursor-pointer custom-select text-base">
+                            <option value="" disabled selected id="optWaterPlaceholder">Select water level...</option>
+                            <option value="low" id="optWaterLow">Low Water (< 2 months)</option>
+                            <option value="medium" id="optWaterMed">Medium Water (2–4 months)</option>
+                            <option value="high" id="optWaterHigh">High Water (> 4 months)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label id="lblSeason" for="seasonDropdown" class="block text-sm font-semibold text-slate-700 mb-2">Step 4: Season</label>
+                        <select id="seasonDropdown" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-accent transition-all shadow-sm cursor-pointer custom-select text-base">
+                            <option value="kharif" id="optSeasonKharif">Kharif</option>
+                            <option value="rabi" id="optSeasonRabi">Rabi</option>
+                            <option value="summer" id="optSeasonSummer">Summer</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button id="btnSubmit" onclick="getRecommendation()" class="w-full bg-primary hover:bg-green-700 text-white font-bold text-lg py-4 px-6 rounded-xl shadow-md hover:shadow-lg transform transition-all active:scale-[0.98] mt-2">
+                    Get Smart Crop Recommendation
+                </button>
+            </div>
+        </div>
+
+        <div id="resultSection" class="hidden space-y-6 z-10 relative">
+            <div class="bg-white rounded-2xl shadow-card p-8 text-center border border-slate-100 relative overflow-hidden">
+                <p id="resPrefix" class="text-slate-500 font-medium mb-2 uppercase tracking-wide text-sm"></p>
+                <h2 id="resNextCrop" class="text-3xl sm:text-4xl font-bold text-primary mb-4 leading-tight">--</h2>
+                <div class="bg-slate-50 rounded-xl p-4 inline-block border border-slate-100">
+                    <p class="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1" id="lblExplanation">Explanation</p>
+                    <p id="resDesc" class="text-slate-700 font-medium text-base">--</p>
+                </div>
+            </div>
+
+            <div class="bg-green-50 border border-green-200 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-center justify-center gap-4 text-center sm:text-left">
+                <div class="text-4xl">📅</div>
+                <div>
+                    <h4 class="font-bold text-green-900 mb-1" id="lblTimeline">Rotation Timeline</h4>
+                    <p id="resTimeline" class="text-green-800 font-medium text-sm sm:text-base">--</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="bg-white rounded-xl shadow-sm p-5 text-center border border-slate-100">
+                    <div class="text-2xl mb-2 text-primary">⏳</div>
+                    <p id="lblCardDuration" class="text-[11px] sm:text-xs text-slate-500 uppercase font-bold">Duration</p>
+                    <p id="infoDuration" class="text-slate-800 font-bold mt-1 text-sm sm:text-base">--</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-5 text-center border border-slate-100">
+                    <div class="text-2xl mb-2 text-blue-500">💧</div>
+                    <p id="lblCardWater" class="text-[11px] sm:text-xs text-slate-500 uppercase font-bold">Water Need</p>
+                    <p id="infoWater" class="text-slate-800 font-bold mt-1 text-sm sm:text-base">--</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-5 text-center border border-slate-100">
+                    <div class="text-2xl mb-2 text-amber-600">🌱</div>
+                    <p id="lblCardSoil" class="text-[11px] sm:text-xs text-slate-500 uppercase font-bold">Soil Benefit</p>
+                    <p id="infoSoil" class="text-slate-800 font-bold mt-1 text-sm sm:text-base">--</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-5 text-center border border-slate-100">
+                    <div class="text-2xl mb-2 text-emerald-500">📈</div>
+                    <p id="lblCardProfit" class="text-[11px] sm:text-xs text-slate-500 uppercase font-bold">Profit Potential</p>
+                    <p id="infoProfit" class="text-slate-800 font-bold mt-1 text-sm sm:text-base">--</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-slate-100">
+                <h3 id="lblAltTitle" class="text-lg font-bold text-slate-800 mb-2">Alternative Crops</h3>
+                <div id="resAltCrops" class="flex flex-wrap gap-2 mt-3"></div>
+            </div>
+            
+            <div class="bg-[#fefce8] border border-[#fef08a] rounded-xl p-6 sm:p-8 shadow-sm">
+                <h3 id="lblTipsTitle" class="text-xl font-bold text-yellow-800 mb-4 flex items-center gap-2">💡 Smart Farmer Tips</h3>
+                <ul class="space-y-3 text-yellow-900 font-medium text-base">
+                    <li class="flex items-start gap-3"><span class="text-yellow-600 mt-0.5 text-lg leading-none">•</span> <span id="tip1"></span></li>
+                    <li class="flex items-start gap-3"><span class="text-yellow-600 mt-0.5 text-lg leading-none">•</span> <span id="tip2"></span></li>
+                    <li class="flex items-start gap-3"><span class="text-yellow-600 mt-0.5 text-lg leading-none">•</span> <span id="tip3"></span></li>
+                    <li class="flex items-start gap-3"><span class="text-yellow-600 mt-0.5 text-lg leading-none">•</span> <span id="tip4"></span></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Injecting the data passed from Express via EJS into JavaScript variables
+const CROPS = <%- JSON.stringify(CROPS) %>;
+const REGIONS = <%- JSON.stringify(REGIONS) %>;
+const i18n = <%- JSON.stringify(i18n) %>;
+
+let currentLang = 'en';
+
+function updateDate() {
+    const today = new Date();
+    const langCode = currentLang === 'hi' ? 'hi-IN' : (currentLang === 'mr' ? 'mr-IN' : 'en-IN');
+    const options = { day: 'numeric', month: 'long', year: 'numeric' };
+    document.getElementById('advisoryDate').textContent = `${i18n[currentLang].lblDate}: ${today.toLocaleDateString(langCode, options)}`;
+}
+
+// FIXED: Robust Autocomplete function that prevents duplicate listeners
+function setupAutocomplete(inputId, listId, dataFetcher, hiddenValId, onSelectCallback) {
+    const input = document.getElementById(inputId);
+    const list = document.getElementById(listId);
+    const hidden = document.getElementById(hiddenValId);
+
+    // Prevent attaching duplicate listeners if called multiple times
+    if (input.dataset.initialized) return;
+    input.dataset.initialized = "true";
+
+    document.addEventListener('click', e => {
+        if (!input.contains(e.target) && !list.contains(e.target)) {
+            list.classList.add('hidden');
+        }
+    });
+
+    const showList = () => {
+        const data = dataFetcher(); // Always pulls the fresh language data
+        const query = input.value.toLowerCase();
+        list.innerHTML = '';
+        let hasMatch = false;
+
+        data.forEach(item => {
+            if (item.searchStr.toLowerCase().includes(query)) {
+                hasMatch = true;
+                const li = document.createElement('li');
+                li.className = item.isHeader ? 
+                    'px-4 py-2 bg-slate-50 text-xs font-bold text-slate-500 uppercase cursor-default' : 
+                    'px-4 py-3 cursor-pointer hover:bg-green-50 hover:text-primary transition-colors border-b border-slate-50 last:border-b-0 text-base font-medium pl-6';
+                
+                li.textContent = item.display;
+                if (!item.isHeader) {
+                    li.onclick = () => {
+                        input.value = item.display;
+                        hidden.value = item.val;
+                        list.classList.add('hidden');
+                        if(onSelectCallback) onSelectCallback(item);
+                    };
+                }
+                list.appendChild(li);
+            }
+        });
+
+        if (!hasMatch) {
+            const li = document.createElement('li');
+            li.className = 'px-4 py-3 text-slate-400 italic text-sm';
+            li.textContent = i18n[currentLang].noMatch;
+            list.appendChild(li);
+        }
+        list.classList.remove('hidden');
+    };
+
+    // Added click listener so it opens reliably every time
+    input.addEventListener('focus', showList);
+    input.addEventListener('click', showList); 
+    input.addEventListener('input', () => {
+        hidden.value = ""; 
+        showList();
+    });
+}
+
+function initCropSearch() {
+    setupAutocomplete('cropSearchInput', 'cropSuggestions', () => {
+        return CROPS.map(c => ({
+            val: c, display: i18n[currentLang].cropNames[c], searchStr: i18n[currentLang].cropNames[c], isHeader: false
+        }));
+    }, 'selectedCropId', null);
+}
+
+function initDistrictSearch() {
+    setupAutocomplete('districtSearchInput', 'districtSuggestions', () => {
+        let distData = [];
+        REGIONS.forEach(r => {
+            distData.push({ val: '', display: r.name, searchStr: r.name, isHeader: true });
+            r.districts.forEach(d => {
+                distData.push({ val: d, display: d, searchStr: d, isHeader: false, regionId: r.id });
+            });
+        });
+        return distData;
+    }, 'selectedDistrictId', (item) => {
+        document.getElementById('selectedRegionId').value = item.regionId;
+        checkSeasonalLogic();
+    });
+}
+
+function checkSeasonalLogic() {
+    const currentMonth = new Date().getMonth();
+    const alertBox = document.getElementById('seasonalAlert');
+    const langData = i18n[currentLang];
+    const regionId = document.getElementById('selectedRegionId').value;
+
+    alertBox.classList.remove('hidden');
+    
+    let phaseTitle = "", phaseDesc = "", icon = "🌱";
+    let boxClass = "rounded-xl p-5 border shadow-sm transition-all duration-300 block fade-in ";
+
+    if (currentMonth >= 2 && currentMonth <= 4) {
+        phaseTitle = langData.phasePreMonsoon;
+        if (regionId === 'marathwada' || regionId === 'vidarbha') {
+            boxClass += 'bg-orange-50 border-orange-200 text-orange-900';
+            icon = '⚠️';
+            phaseDesc = langData.alertDescWarning;
+        } else {
+            boxClass += 'bg-yellow-50 border-yellow-200 text-yellow-900';
+            icon = '☀️';
+            phaseDesc = langData.alertDescNormal;
+        }
+    } else if (currentMonth >= 5 && currentMonth <= 8) {
+        phaseTitle = langData.phaseMonsoon;
+        boxClass += 'bg-blue-50 border-blue-200 text-blue-900';
+        icon = '🌧️';
+        phaseDesc = langData.alertDescMonsoon;
+    } else {
+        phaseTitle = langData.phasePostMonsoon;
+        boxClass += 'bg-green-50 border-green-200 text-green-900';
+        icon = '🌾';
+        phaseDesc = langData.alertDescPostMonsoon;
+    }
+
+    alertBox.className = boxClass;
+    document.getElementById('alertIcon').textContent = icon;
+    document.getElementById('alertTitle').textContent = `${langData.lblPhase}: ${phaseTitle}`;
+    document.getElementById('alertDesc').textContent = phaseDesc;
+}
+
+function changeLanguage() {
+    currentLang = document.getElementById('languageSwitch').value;
+    const lang = i18n[currentLang];
+
+    updateDate();
+    document.getElementById('pageTitle').textContent = lang.pageTitle;
+    document.getElementById('pageSubtitle').textContent = lang.pageSubtitle;
+    document.getElementById('lblCrop').textContent = lang.lblCrop;
+    document.getElementById('cropSearchInput').placeholder = lang.cropPlaceholder;
+    document.getElementById('lblState').textContent = lang.lblState;
+    document.getElementById('lblDistrict').textContent = lang.lblDistrict;
+    document.getElementById('districtSearchInput').placeholder = lang.districtPlaceholder;
+    
+    document.getElementById('lblWater').textContent = lang.lblWater;
+    document.getElementById('optWaterPlaceholder').textContent = lang.optWaterPlaceholder;
+    document.getElementById('optWaterLow').textContent = lang.optWaterLow;
+    document.getElementById('optWaterMed').textContent = lang.optWaterMed;
+    document.getElementById('optWaterHigh').textContent = lang.optWaterHigh;
+
+    document.getElementById('lblSeason').textContent = lang.lblSeason;
+    document.getElementById('optSeasonKharif').textContent = lang.optSeasonKharif;
+    document.getElementById('optSeasonRabi').textContent = lang.optSeasonRabi;
+    document.getElementById('optSeasonSummer').textContent = lang.optSeasonSummer;
+    
+    document.getElementById('lblSoil').innerHTML = `${lang.lblSoil.split(' (')[0]} <span class="text-slate-400 font-normal">${lang.lblSoil.includes('(') ? '(' + lang.lblSoil.split('(')[1] : ''}</span>`;
+    document.getElementById('optSoilAll').textContent = lang.optSoilAll;
+    document.getElementById('btnSubmit').textContent = lang.btnSubmit;
+
+    document.getElementById('lblExplanation').textContent = lang.lblExplanation;
+    document.getElementById('lblTimeline').textContent = lang.lblTimeline;
+    document.getElementById('lblCardDuration').textContent = lang.lblCardDuration;
+    document.getElementById('lblCardWater').textContent = lang.lblCardWater;
+    document.getElementById('lblCardSoil').textContent = lang.lblCardSoil;
+    document.getElementById('lblCardProfit').textContent = lang.lblCardProfit;
+    document.getElementById('lblAltTitle').textContent = lang.lblAltTitle;
+    document.getElementById('lblTipsTitle').innerHTML = `💡 ${lang.lblTipsTitle}`;
+    document.getElementById('tip1').textContent = lang.tip1;
+    document.getElementById('tip2').textContent = lang.tip2;
+    document.getElementById('tip3').textContent = lang.tip3;
+    document.getElementById('tip4').textContent = lang.tip4;
+
+    // Update value without re-binding event listeners
+    const currCrop = document.getElementById('selectedCropId').value;
+    if (currCrop) document.getElementById('cropSearchInput').value = lang.cropNames[currCrop];
+    else document.getElementById('cropSearchInput').value = "";
+
+    const currDist = document.getElementById('selectedDistrictId').value;
+    if (currDist) document.getElementById('districtSearchInput').value = currDist;
+
+    checkSeasonalLogic();
+    
+    if (!document.getElementById('resultSection').classList.contains('hidden')) {
+        getRecommendation();
+    }
+}
+
+async function getRecommendation() {
+    const cropId = document.getElementById('selectedCropId').value;
+    const distId = document.getElementById('selectedDistrictId').value;
+    const waterId = document.getElementById('waterLevel').value;
+    const regionId = document.getElementById('selectedRegionId').value;
+    const lang = i18n[currentLang];
+
+    if (!cropId) return alert(lang.errCrop);
+    if (!distId) return alert(lang.errDistrict);
+    if (!waterId) return alert(lang.errWater);
+
+    try {
+        const response = await fetch('/api/recommend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                cropId: cropId,
+                regionId: regionId,
+                waterId: waterId,
+                lang: currentLang,
+                month: new Date().getMonth()
+            })
+        });
+
+        const data = await response.json();
+        
+        if(data.error) {
+            alert(data.error);
+            return;
+        }
+
+        renderResult(data, cropId);
+
+        const resSec = document.getElementById('resultSection');
+        resSec.classList.remove('hidden', 'fade-in');
+        void resSec.offsetWidth;
+        resSec.classList.add('fade-in');
+
+        if (window.innerWidth < 640) {
+            setTimeout(() => resSec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+        }
+    } catch (error) {
+        console.error("Fetch error:", error);
+        alert("Could not connect to the recommendation engine.");
+    }
+}
+
+function renderResult(data, cropId) {
+    const lang = i18n[currentLang];
+    document.getElementById('resPrefix').innerHTML = `${lang.resPrefixPart1}<span class="font-bold text-slate-700">${lang.cropNames[cropId]}</span>${lang.resPrefixPart2}`;
+
+    document.getElementById('resNextCrop').textContent = data.recName;
+    document.getElementById('resDesc').textContent = data.recDesc;
+    document.getElementById('resTimeline').textContent = data.recTimeline;
+    document.getElementById('infoDuration').textContent = data.recDur;
+    document.getElementById('infoWater').textContent = data.recWat;
+    document.getElementById('infoSoil').textContent = data.recSoil;
+    document.getElementById('infoProfit').textContent = data.recProf;
+
+    const altContainer = document.getElementById('resAltCrops');
+    altContainer.innerHTML = '';
+    data.alts.forEach(alt => {
+        const span = document.createElement('span');
+        span.className = 'px-4 py-1.5 bg-green-50 text-primary border border-green-200 rounded-full text-sm font-semibold';
+        span.textContent = alt.name;
+        altContainer.appendChild(span);
+    });
+}
+
+// Initialize on load
+window.onload = () => {
+    initCropSearch();
+    initDistrictSearch();
+    changeLanguage(); 
+};
+    </script>
+</body>
+</html>
